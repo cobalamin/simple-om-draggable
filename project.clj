@@ -1,4 +1,4 @@
-(defproject simple-om-draggable "0.1.0-SNAPSHOT"
+(defproject simple-om-draggable "0.1.0"
   :description "A simple draggable wrapper component for Om"
   :url "https://github.com/cobalamin/simple-om-draggable"
   :license {:name "The MIT License (MIT)"
