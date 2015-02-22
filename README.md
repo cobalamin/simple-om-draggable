@@ -21,7 +21,9 @@ Usage:
 
 This component works with multiple draggables overlapping each other, because it listens to mousemove and mouseup events globally. It also protects the user from accidentally clicking a link that they hovered over when they started dragging (via an invisible overlay - it's not beautiful, but it works).
 
-For a quick demo, have a look at https://github.com/cobalamin/omnom, the project I built this component for.
+## Example
+
+Run `lein cljsbuild once`, then open up `resources/public/index.html`.
 
 ## License
 
