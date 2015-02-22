@@ -1,4 +1,5 @@
 pom.xml
+pom.xml.asc
 *jar
 /lib/
 /classes/
@@ -7,3 +8,6 @@ pom.xml
 .lein-deps-sum
 .lein-repl-history
 .lein-plugins/
+
+/resources/public/example.js
+/resources/public/out/
