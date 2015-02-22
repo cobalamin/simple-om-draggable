@@ -1,5 +1,7 @@
 # simple-om-draggable
 
+[![Clojars Project](http://clojars.org/simple-om-draggable/latest-version.svg)](http://clojars.org/simple-om-draggable)
+
 A simple draggable wrapper component for Om
 
 ## Overview
