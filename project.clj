@@ -4,6 +4,11 @@
   :license {:name "The MIT License (MIT)"
             :url "http://opensource.org/licenses/MIT"}
 
+  :signing {:gpg-key "C6FCEC07"}
+  :scm {:name "git"
+        :url "https://github.com/cobalamin/simple-om-draggable"}
+  :deploy-repositories [["clojars" {:creds :gpg}]]
+
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/clojurescript "0.0-2755"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
