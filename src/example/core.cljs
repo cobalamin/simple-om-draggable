@@ -17,7 +17,6 @@
   (reify
     om/IRender
     (render [_]
-      (.log js/console "example-view")
       (dom/div
        #js {:dangerouslySetInnerHTML #js {:__html (:html cursor)}
             :style #js {:max-width "500px"
