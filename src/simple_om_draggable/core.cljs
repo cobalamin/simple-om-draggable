@@ -1,10 +1,10 @@
 (ns simple-om-draggable.core
-  (:require [cljs.core.async :as async :refer [put! <! mult untap tap chan]]
+  (:require [cljs.core.async :as async :refer [put! <! mult untap tap alts! chan]]
             [om.core :as om :include-macros true]
             [om-tools.dom :as dom :include-macros true]
             [goog.events :as events]
             [clojure.set :as set])
-  (:require-macros [cljs.core.async.macros :as am :refer [go-loop]]))
+  (:require-macros [cljs.core.async.macros :as am :refer [go go-loop]]))
 
 ;;; Global event channels
 
@@ -14,8 +14,11 @@
       (events/listen el type #(put! c %))))
     c))
 
-(def global-mouse-chan
-  (mult (listen js/document "mouseup" "mousemove")))
+(def global-mousemove
+  (mult (listen js/document "mousemove")))
+
+(def global-mouseup
+  (mult (listen js/document "mouseup")))
 
 ;;; Handlers
 
@@ -25,9 +28,7 @@
                        :top (.-clientY e)}
         elem-pos (om/get-state owner :position)
         offset (merge-with - client-offset elem-pos)]
-    (om/set-state! owner :offset offset))
-  ;; start listening to global mouse events
-  (tap global-mouse-chan (om/get-state owner :mouse-chan)))
+    (om/set-state! owner :offset offset)))
 
 (defn- handle-stop [e owner cursor pos-keys pos-key-map]
   ;; transact the cursor state
@@ -37,8 +38,6 @@
     (set/rename-keys
      (om/get-state owner :position)
      pos-key-map))
-  ;; stop listening to global mouse events
-  (untap global-mouse-chan (om/get-state owner :mouse-chan))
   ;; reset local dragging state
   (om/set-state! owner :dragging false))
 
@@ -64,22 +63,39 @@
        (init-state [_]
          {:position
           (set/rename-keys
-           (get-in cursor pos-keys)
-           (set/map-invert pos-key-map))
+            (get-in cursor pos-keys)
+            (set/map-invert pos-key-map))
           :offset {:left 0 :top 0}
           :dragging false
-          :mouse-chan (chan)})
+          :mousedown (chan)})
 
        om/IWillMount
        (will-mount [_]
-         (let [mouse-chan (om/get-state dragger :mouse-chan)]
-           (go-loop []
-             (let [e (<! mouse-chan)]
-               (condp = (.-type e)
-                 "mousedown" (handle-start e dragger)
-                 "mouseup"   (handle-stop e dragger cursor pos-keys pos-key-map)
-                 "mousemove" (handle-movement e dragger))
-               (recur)))))
+         (let [mousedown (om/get-state dragger :mousedown)
+               mouseup (chan)
+               mousemove (chan)]
+
+           (go
+             (while true
+               (let [e (<! mousedown)]
+                 (handle-start e dragger))
+
+               (tap global-mouseup mouseup)
+               (tap global-mousemove mousemove)
+
+               (loop []
+                 (let [[e c] (alts! [mouseup mousemove])]
+                   (condp = c
+                     mouseup
+                     (handle-stop e dragger cursor pos-keys pos-key-map)
+
+                     mousemove
+                     (do
+                       (handle-movement e dragger)
+                       (recur)))))
+
+               (untap global-mouseup mouseup)
+               (untap global-mousemove mousemove)))))
 
        om/IRenderState
        (render-state [_ state]
@@ -88,8 +104,9 @@
            {:position "absolute"
             :top (get-in state [:position :top])
             :left (get-in state [:position :left])
-            :user-select "none" :-webkit-user-select "none" :-moz-user-select "none" }
-           :on-mouse-down #(put! (:mouse-chan state) (.-nativeEvent %))}
+            :user-select "none" :-webkit-user-select "none" :-moz-user-select "none"}
+           :on-mouse-down #(put! (:mousedown state) (.-nativeEvent %))
+           :on-drag-start #(.preventDefault %)}
 
           ;; invisible overlay div to block e.g. clicks on links
           (dom/div {:style {:position "absolute"
