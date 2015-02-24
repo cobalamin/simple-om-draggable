@@ -1,5 +1,5 @@
 (ns simple-om-draggable.core
-  (:require [cljs.core.async :as async :refer [put! <! mult untap tap alts! chan]]
+  (:require [cljs.core.async :as async :refer [put! <! >! mult untap tap alts! chan sliding-buffer]]
             [om.core :as om :include-macros true]
             [om-tools.dom :as dom :include-macros true]
             [goog.events :as events]
@@ -67,7 +67,8 @@
             (set/map-invert pos-key-map))
           :offset {:left 0 :top 0}
           :dragging false
-          :mousedown (chan)})
+          :mousedown (chan (sliding-buffer 1)
+                           (filter #(not (om/get-state dragger :dragging))))})
 
        om/IWillMount
        (will-mount [_]
@@ -75,27 +76,27 @@
                mouseup (chan)
                mousemove (chan)]
 
-           (go
-             (while true
-               (let [e (<! mousedown)]
-                 (handle-start e dragger))
+           (go-loop []
+             (let [e (<! mousedown)]
+               (handle-start e dragger))
 
-               (tap global-mouseup mouseup)
-               (tap global-mousemove mousemove)
+             (tap global-mouseup mouseup)
+             (tap global-mousemove mousemove)
 
-               (loop []
-                 (let [[e c] (alts! [mouseup mousemove])]
-                   (condp = c
-                     mouseup
-                     (handle-stop e dragger cursor pos-keys pos-key-map)
+             (loop []
+               (let [[e c] (alts! [mouseup mousemove])]
+                 (condp = c
+                   mouseup
+                   (handle-stop e dragger cursor pos-keys pos-key-map)
 
-                     mousemove
-                     (do
-                       (handle-movement e dragger)
-                       (recur)))))
+                   mousemove
+                   (do
+                     (handle-movement e dragger)
+                     (recur)))))
 
-               (untap global-mouseup mouseup)
-               (untap global-mousemove mousemove)))))
+             (untap global-mouseup mouseup)
+             (untap global-mousemove mousemove)
+             (recur))))
 
        om/IRenderState
        (render-state [_ state]
@@ -106,7 +107,8 @@
             :left (get-in state [:position :left])
             :user-select "none" :-webkit-user-select "none" :-moz-user-select "none"}
            :on-mouse-down #(put! (:mousedown state) (.-nativeEvent %))
-           :on-drag-start #(.preventDefault %)}
+           ;:on-drag-start #(.preventDefault %)
+           }
 
           ;; invisible overlay div to block e.g. clicks on links
           (dom/div {:style {:position "absolute"
