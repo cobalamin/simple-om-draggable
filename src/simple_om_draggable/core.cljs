@@ -19,13 +19,16 @@
 
 ;;; Handlers
 
-(defn- handle-start [e owner]
-  ;; save the offset in local state
+(defn- set-offset [e owner]
   (let [client-offset {:left (.-clientX e)
                        :top (.-clientY e)}
         elem-pos (om/get-state owner :position)
         offset (merge-with - client-offset elem-pos)]
-    (om/set-state! owner :offset offset))
+    (om/set-state! owner :offset offset)))
+
+(defn- handle-start [e owner]
+  ;; save the offset (cursor pos inside element pos) in local state
+  (set-offset e owner)
   ;; start listening to global mouse events
   (tap global-mouse-chan (om/get-state owner :mouse-chan)))
 
@@ -89,7 +92,8 @@
             :top (get-in state [:position :top])
             :left (get-in state [:position :left])
             :user-select "none" :-webkit-user-select "none" :-moz-user-select "none" }
-           :on-mouse-down #(put! (:mouse-chan state) (.-nativeEvent %))}
+           :on-mouse-down #(put! (:mouse-chan state) (.-nativeEvent %))
+           :on-drag-start #(.preventDefault %)}
 
           ;; invisible overlay div to block e.g. clicks on links
           (dom/div {:style {:position "absolute"
